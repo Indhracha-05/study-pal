@@ -2,13 +2,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, BookOpen, Trophy, Timer } from "lucide-react"
 import { Link } from "react-router-dom"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 export default function Home() {
     return (
         <div className="flex min-h-screen flex-col">
             <header className="px-6 py-4 flex items-center justify-between border-b">
-                <h1 className="text-xl font-bold">Study Pal</h1>
-                <nav className="flex gap-4">
+                <Link to="/" className="hover:opacity-80 transition-opacity">
+                    <h1 className="text-xl font-bold">Study Pal</h1>
+                </Link>
+                <nav className="flex items-center gap-4">
+                    <ThemeToggle />
                     <Link to="/login">
                         <Button variant="ghost">Log In</Button>
                     </Link>
