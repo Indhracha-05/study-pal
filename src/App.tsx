@@ -7,6 +7,8 @@ import Leaderboard from './pages/Leaderboard'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Settings from './pages/Settings'
+import Calendar from './pages/Calendar'
+import ProtectedRoute from './components/ProtectedRoute'
 import DashboardLayout from './layouts/DashboardLayout'
 
 function App() {
@@ -15,10 +17,11 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="groups" element={<Groups />} />
                 <Route path="sessions" element={<Sessions />} />
+                <Route path="calendar" element={<Calendar />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
                 <Route path="settings" element={<Settings />} />
             </Route>

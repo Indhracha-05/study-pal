@@ -1,19 +1,33 @@
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Users, LayoutDashboard, Trophy, Timer, Settings, LogOut } from "lucide-react"
+import { Users, LayoutDashboard, Trophy, Timer, Settings, LogOut, Calendar } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { auth } from "@/lib/firebase"
+import { toast } from "sonner"
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Groups", href: "/dashboard/groups" },
     { icon: Timer, label: "Sessions", href: "/dashboard/sessions" },
+    { icon: Calendar, label: "Calendar", href: "/dashboard/calendar" },
     { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard" },
 ]
 
 export function DashboardSidebar() {
     const location = useLocation()
+    const navigate = useNavigate()
     const pathname = location.pathname
+
+    const handleLogout = async () => {
+        try {
+            await auth.signOut()
+            toast.success("Logged out successfully")
+            navigate("/")
+        } catch (error: any) {
+            toast.error("Failed to log out")
+        }
+    }
 
     return (
         <div className="flex h-screen w-64 flex-col border-r bg-background">
@@ -50,11 +64,13 @@ export function DashboardSidebar() {
                         Settings
                     </Link>
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive" asChild>
-                    <Link to="/">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log Out
-                    </Link>
+                <Button
+                    variant="ghost"
+                    className="w-full justify-start text-destructive hover:text-destructive"
+                    onClick={handleLogout}
+                >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log Out
                 </Button>
             </div>
         </div>

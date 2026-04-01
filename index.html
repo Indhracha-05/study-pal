@@ -9,6 +9,44 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const originalLog = console.log;
+
+        function forwardLog(type, args) {
+            try {
+                const serializedArgs = Array.from(args).map(a => 
+                    typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : String(a)
+                );
+                fetch('http://localhost:5174/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, args: serializedArgs })
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        console.error = function() {
+            forwardLog('error', arguments);
+            originalError.apply(console, arguments);
+        };
+        console.warn = function() {
+            forwardLog('warn', arguments);
+            originalWarn.apply(console, arguments);
+        };
+        console.log = function() {
+            forwardLog('log', arguments);
+            originalLog.apply(console, arguments);
+        };
+        
+        window.addEventListener('error', function(event) {
+            forwardLog('error', [event.message, event.filename, event.lineno, event.colno, event.error]);
+        });
+        window.addEventListener('unhandledrejection', function(event) {
+            forwardLog('error', ['Unhandled Rejection', event.reason]);
+        });
+      </script>
   </head>
   <body>
     <div id="root"></div>

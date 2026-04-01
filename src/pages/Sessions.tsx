@@ -1,51 +1,53 @@
 import { Button } from "@/components/ui/button"
-import { Play, Pause, RotateCcw, Coffee, Brain } from "lucide-react"
-import { useState, useEffect } from "react"
-
-type TimerMode = "FOCUS" | "SHORT_BREAK" | "LONG_BREAK"
+import { Play, Pause, RotateCcw, Coffee, Brain, CheckCircle2, PlusCircle } from "lucide-react"
+import { useTimer } from "@/contexts/TimerContext"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { db } from "@/lib/firebase"
+import { doc, updateDoc } from "firebase/firestore"
+import { toast } from "sonner"
 
 export default function Sessions() {
-    const [timeLeft, setTimeLeft] = useState(25 * 60) // 25 minutes
-    const [isActive, setIsActive] = useState(false)
-    const [mode, setMode] = useState<TimerMode>("FOCUS")
+    const { 
+        timeLeft, 
+        isActive, 
+        mode, 
+        topic, 
+        setTopic, 
+        toggleTimer, 
+        resetTimer, 
+        setTimerMode, 
+        formatTime,
+        tasks,
+        selectedTaskId,
+        setSelectedTaskId,
+        showFeedback,
+        setShowFeedback,
+        lastSessionTaskId
+    } = useTimer()
 
-    useEffect(() => {
-        let interval: number | null = null
+    const currentTask = tasks.find(t => t.id === lastSessionTaskId)
 
-        if (isActive && timeLeft > 0) {
-            interval = window.setInterval(() => {
-                setTimeLeft((prev) => prev - 1)
-            }, 1000)
-        } else if (timeLeft === 0) {
-            setIsActive(false)
+    const handleCompleteTask = async () => {
+        if (!lastSessionTaskId) return
+        try {
+            await updateDoc(doc(db, "tasks", lastSessionTaskId), { completed: true })
+            toast.success("Task completed! Great job.")
+            setShowFeedback(false)
+        } catch (e) {
+            toast.error("Failed to update task")
         }
-
-        return () => {
-            if (interval) clearInterval(interval)
-        }
-    }, [isActive, timeLeft])
-
-    const toggleTimer = () => setIsActive(!isActive)
-
-    const resetTimer = () => {
-        setIsActive(false)
-        if (mode === "FOCUS") setTimeLeft(25 * 60)
-        else if (mode === "SHORT_BREAK") setTimeLeft(5 * 60)
-        else setTimeLeft(15 * 60)
     }
 
-    const setTimerMode = (newMode: TimerMode) => {
-        setMode(newMode)
-        setIsActive(false)
-        if (newMode === "FOCUS") setTimeLeft(25 * 60)
-        else if (newMode === "SHORT_BREAK") setTimeLeft(5 * 60)
-        else setTimeLeft(15 * 60)
-    }
-
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+    const handleAddPomos = async (count: number) => {
+        if (!lastSessionTaskId || !currentTask) return
+        try {
+            const newTotal = (currentTask.totalPomos || 1) + count
+            await updateDoc(doc(db, "tasks", lastSessionTaskId), { totalPomos: newTotal })
+            toast.success(`Goal updated! Added ${count} more pomos.`)
+            setShowFeedback(false)
+        } catch (e) {
+            toast.error("Failed to update goal")
+        }
     }
 
     return (
@@ -92,6 +94,87 @@ export default function Sessions() {
                         <RotateCcw className="w-4 h-4" />
                     </Button>
                 </div>
+
+                {mode === "FOCUS" && (
+                    <div className="w-full max-w-sm space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Link a Task (Optional)</label>
+                            <select
+                                className="w-full bg-background border rounded-md px-3 py-2 text-sm"
+                                value={selectedTaskId}
+                                onChange={(e) => setSelectedTaskId(e.target.value)}
+                            >
+                                <option value="">No task selected</option>
+                                {tasks
+                                    .filter(t => !t.completed)
+                                    .map(task => (
+                                        <option key={task.id} value={task.id}>
+                                            {task.title} ({task.currentPomos || 0}/{task.totalPomos || 1} ⏲️)
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                Task goal tracking and feedback enabled.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Session Feedback Dialog */}
+                <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Brain className="w-5 h-5 text-primary" />
+                                Session Complete!
+                            </DialogTitle>
+                            <DialogDescription>
+                                You've finished a focus session for <strong>"{currentTask?.title || "your task"}"</strong>.
+                            </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="py-6 flex flex-col items-center justify-center space-y-4">
+                            <div className="text-center">
+                                <p className="text-sm text-muted-foreground mb-1">Pomo Progress</p>
+                                <div className="text-3xl font-bold text-primary">
+                                    {currentTask?.currentPomos || 0} / {currentTask?.totalPomos || 1}
+                                </div>
+                            </div>
+                            
+                            {currentTask && (currentTask.currentPomos || 0) >= (currentTask.totalPomos || 1) ? (
+                                <div className="bg-green-500/10 text-green-600 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4" /> Goal Reached!
+                                </div>
+                            ) : (
+                                <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-full text-xs font-bold">
+                                    Keep going! Almost there.
+                                </div>
+                            )}
+                        </div>
+
+                        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                            <Button 
+                                variant="outline" 
+                                className="flex-1 gap-2"
+                                onClick={() => handleAddPomos(1)}
+                            >
+                                <PlusCircle className="w-4 h-4" /> +1 Pomo
+                            </Button>
+                            <Button 
+                                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
+                                onClick={handleCompleteTask}
+                            >
+                                <CheckCircle2 className="w-4 h-4" /> Strike Off
+                            </Button>
+                        </DialogFooter>
+                        <div className="text-center">
+                            <Button variant="ghost" size="sm" onClick={() => setShowFeedback(false)} className="text-muted-foreground text-[10px]">
+                                Keep Task Active
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     )
