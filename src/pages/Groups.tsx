@@ -35,10 +35,11 @@ export default function Groups() {
     useEffect(() => {
         const q = query(collection(db, "groups"), orderBy("createdAt", "desc"))
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedGroups = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }))
+            const fetchedGroups = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }))
             setGroups(fetchedGroups)
             setLoading(false)
         }, (error) => {
