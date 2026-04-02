@@ -56,7 +56,7 @@ export default function Groups() {
         })
 
         // Listen to current user's joined groups
-        let unsubscribeUser: any = () => {}
+        let unsubscribeUser: any = () => { }
         if (currentUser) {
             unsubscribeUser = onSnapshot(doc(db, "users", currentUser.uid), (doc) => {
                 if (doc.exists()) {
@@ -88,14 +88,14 @@ export default function Groups() {
 
             // Add to user's joined groups using atomic union
             const userRef = doc(db, "users", currentUser.uid)
-            await updateDoc(userRef, { 
-                joinedGroups: arrayUnion(groupRef.id) 
+            await updateDoc(userRef, {
+                joinedGroups: arrayUnion(groupRef.id)
             })
 
             setNewGroupName("")
             setOpen(false)
             toast.success(`Sanctuary "${newGroupName}" established! 📡`)
-            
+
             // Navigate immediately into the room
             navigate(`/dashboard/groups/${groupRef.id}/room`)
         } catch (error: any) {
@@ -113,8 +113,8 @@ export default function Groups() {
             const userRef = doc(db, "users", currentUser.uid)
 
             // Update user list atomically
-            await updateDoc(userRef, { 
-                joinedGroups: arrayUnion(groupId) 
+            await updateDoc(userRef, {
+                joinedGroups: arrayUnion(groupId)
             })
 
             // Update group member count/list atomically
@@ -134,7 +134,7 @@ export default function Groups() {
     const handleJoinWithCode = async () => {
         if (!inviteCode.trim() || !currentUser) return
         const code = inviteCode.trim()
-        
+
         if (userGroups.includes(code)) {
             toast.info("You're already in this circle!")
             return
@@ -160,8 +160,8 @@ export default function Groups() {
             const userRef = doc(db, "users", currentUser.uid)
 
             // Update user list atomically
-            await updateDoc(userRef, { 
-                joinedGroups: arrayRemove(groupId) 
+            await updateDoc(userRef, {
+                joinedGroups: arrayRemove(groupId)
             })
 
             // Update group member metadata atomically
@@ -191,7 +191,7 @@ export default function Groups() {
 
     const handleDeleteGroup = async (groupId: string, groupName: string) => {
         if (!confirm(`Are you sure you want to delete the group "${groupName}"?`)) return;
-        
+
         try {
             await deleteDoc(doc(db, "groups", groupId))
             toast.success(`Group "${groupName}" deleted`)
@@ -210,8 +210,8 @@ export default function Groups() {
                     </div>
                     <div className="flex gap-4 items-center flex-wrap">
                         <div className="flex gap-2 p-1.5 bg-muted/30 border border-border rounded-2xl group focus-within:ring-2 ring-primary/20 transition-all min-w-[320px]">
-                            <Input 
-                                placeholder="Enter private code..." 
+                            <Input
+                                placeholder="Enter private code..."
                                 className="border-none bg-transparent focus-visible:ring-0 flex-1 font-black tracking-widest text-[11px] px-4"
                                 value={inviteCode}
                                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
@@ -291,63 +291,63 @@ export default function Groups() {
                             {groups
                                 .filter(g => userGroups.includes(g.id))
                                 .map((group) => {
-                                return (
-                                    <Card key={group.id} className="glass-card border-none group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden">
-                                        <CardHeader className="relative pr-8 pb-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-xl bg-orange-400/10 text-orange-400">
-                                                    <Users className="h-5 w-5" />
+                                    return (
+                                        <Card key={group.id} className="glass-card border-none group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden">
+                                            <CardHeader className="relative pr-8 pb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 rounded-xl bg-orange-400/10 text-orange-400">
+                                                        <Users className="h-5 w-5" />
+                                                    </div>
+                                                    <CardTitle className="text-lg font-heading uppercase">{group.name}</CardTitle>
                                                 </div>
-                                                <CardTitle className="text-lg font-heading uppercase">{group.name}</CardTitle>
-                                            </div>
-                                            <CardDescription className="font-bold flex items-center gap-1 mt-1 text-[11px] uppercase tracking-widest text-green-600 dark:text-green-400">
-                                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1" />
-                                                LIVE IN ROOM
-                                            </CardDescription>
-                                            
-                                            {group.createdBy === currentUser?.uid && (
-                                                <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            navigator.clipboard.writeText(group.id);
-                                                            toast.success("Invite Code Copied! 🛰️");
-                                                        }}
-                                                        title="Copy Invite Code"
-                                                    >
-                                                        <Share2 className="h-4 w-4" />
+                                                <CardDescription className="font-bold flex items-center gap-1 mt-1 text-[11px] uppercase tracking-widest text-green-600 dark:text-green-400">
+                                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1" />
+                                                    LIVE IN ROOM
+                                                </CardDescription>
+
+                                                {group.createdBy === currentUser?.uid && (
+                                                    <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigator.clipboard.writeText(group.id);
+                                                                toast.success("Invite Code Copied! 🛰️");
+                                                            }}
+                                                            title="Copy Invite Code"
+                                                        >
+                                                            <Share2 className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteGroup(group.id, group.name);
+                                                            }}
+                                                            title="Delete Group"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </CardHeader>
+                                            <CardContent className="space-y-4 pt-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="outline" size="sm" className="flex-1 bg-primary/5 border-primary/10 hover:bg-primary/10 font-black text-[10px] uppercase tracking-widest" onClick={() => handleEnterRoom(group.id)}>
+                                                        ENTER ROOM
                                                     </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteGroup(group.id, group.name);
-                                                        }}
-                                                        title="Delete Group"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
+                                                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive font-black text-[10px] uppercase tracking-widest" onClick={() => handleLeaveGroup(group.id, group.name)}>
+                                                        LEAVE
                                                     </Button>
                                                 </div>
-                                            )}
-                                        </CardHeader>
-                                        <CardContent className="space-y-4 pt-4">
-                                            <div className="flex items-center gap-2">
-                                                <Button variant="outline" size="sm" className="flex-1 bg-primary/5 border-primary/10 hover:bg-primary/10 font-black text-[10px] uppercase tracking-widest" onClick={() => handleEnterRoom(group.id)}>
-                                                    ENTER ROOM
-                                                </Button>
-                                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive font-black text-[10px] uppercase tracking-widest" onClick={() => handleLeaveGroup(group.id, group.name)}>
-                                                    LEAVE
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )
-                            })}
+                                            </CardContent>
+                                        </Card>
+                                    )
+                                })}
                         </div>
                     )}
                 </section>
