@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { toast } from "sonner"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 export default function Settings() {
     const { currentUser } = useAuth()
@@ -99,13 +100,19 @@ export default function Settings() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="glass-card overflow-hidden border-primary/10">
                 <CardHeader>
-                    <CardTitle>Appearance</CardTitle>
-                    <CardDescription>Customize how Study Pal looks for you.</CardDescription>
+                    <CardTitle className="text-lg font-heading">Theme</CardTitle>
+                    <CardDescription>Switch between your preferred visual styles.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">You can toggle between light and dark mode using the theme switch on the home page or sidebar.</p>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-white/5">
+                        <div className="space-y-0.5">
+                            <p className="text-sm font-bold">Interface Mode</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Toggle Light or Dark</p>
+                        </div>
+                        <ThemeToggle />
+                    </div>
                 </CardContent>
             </Card>
         </div>

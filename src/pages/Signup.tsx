@@ -66,9 +66,10 @@ export default function Signup() {
                                 <Label htmlFor="first-name">First name</Label>
                                 <Input
                                     id="first-name"
-                                    placeholder="John"
+                                    placeholder=""
                                     value={firstName}
                                     onChange={(e) => setFirstName(e.target.value)}
+                                    autoComplete="off"
                                     required
                                 />
                             </div>
@@ -76,9 +77,10 @@ export default function Signup() {
                                 <Label htmlFor="last-name">Last name</Label>
                                 <Input
                                     id="last-name"
-                                    placeholder="Doe"
+                                    placeholder=""
                                     value={lastName}
                                     onChange={(e) => setLastName(e.target.value)}
+                                    autoComplete="off"
                                     required
                                 />
                             </div>
@@ -88,9 +90,10 @@ export default function Signup() {
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="m@example.com"
+                                placeholder=""
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="off"
                                 required
                             />
                         </div>
@@ -101,6 +104,7 @@ export default function Signup() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="new-password"
                                 required
                             />
                         </div>

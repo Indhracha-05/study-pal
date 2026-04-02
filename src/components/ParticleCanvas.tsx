@@ -26,21 +26,31 @@ export default function ParticleCanvas() {
             size: number
             color: string
 
+            char: string
+            opacity: number
+            weight: number
+
             constructor(x: number, y: number, directionX: number, directionY: number, size: number, color: string) {
+                const chars = ['Σ', 'θ', 'π', 'Ω', 'α', 'β', 'γ', 'A', 'B', 'C', '1', '2', '∫', '√', '∞', 'ϕ', 'ψ', 'λ', '∆']
                 this.x = x
                 this.y = y
                 this.directionX = directionX
                 this.directionY = directionY
-                this.size = size
+                this.size = size * 10 // Larger for text
                 this.color = color
+                this.char = chars[Math.floor(Math.random() * chars.length)]
+                this.opacity = Math.random() * 0.3 + 0.1
+                this.weight = [300, 400, 600, 800][Math.floor(Math.random() * 4)]
             }
 
             draw() {
                 if (!ctx) return
-                ctx.beginPath()
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false)
+                ctx.save()
+                ctx.globalAlpha = this.opacity
+                ctx.font = `${this.weight} ${this.size}px 'Outfit', sans-serif`
                 ctx.fillStyle = this.color
-                ctx.fill()
+                ctx.fillText(this.char, this.x, this.y)
+                ctx.restore()
             }
 
             update() {
@@ -54,8 +64,11 @@ export default function ParticleCanvas() {
 
                 if (distance < mouse.radius) {
                     const force = (mouse.radius - distance) / mouse.radius
-                    this.x -= (dx / distance) * force * 5
-                    this.y -= (dy / distance) * force * 5
+                    this.directionX -= (dx / distance) * force * 0.1 // Subtle reaction
+                    this.directionY -= (dy / distance) * force * 0.1
+                    this.opacity = Math.min(1, this.opacity + 0.05) // Brighten on hover
+                } else {
+                    this.opacity = Math.max(0.1, this.opacity - 0.01)
                 }
 
                 this.x += this.directionX
@@ -107,13 +120,13 @@ export default function ParticleCanvas() {
                     const dy = particles[a].y - particles[b].y
                     const distance = dx * dx + dy * dy
                     
-                    if (distance < 15000) { 
-                        const opacity = 1 - (distance / 15000)
-                        ctx.strokeStyle = isDark() ? `rgba(96, 165, 250, ${opacity * 0.2})` : `rgba(37, 99, 235, ${opacity * 0.2})`
-                        ctx.lineWidth = 1
+                    if (distance < 20000) { 
+                        const opacity = 1 - (distance / 20000)
+                        ctx.strokeStyle = isDark() ? `rgba(255, 255, 255, ${opacity * 0.05})` : `rgba(0, 0, 0, ${opacity * 0.03})`
+                        ctx.lineWidth = 0.5
                         ctx.beginPath()
-                        ctx.moveTo(particles[a].x, particles[a].y)
-                        ctx.lineTo(particles[b].x, particles[b].y)
+                        ctx.moveTo(particles[a].x, particles[a].y - particles[a].size / 3)
+                        ctx.lineTo(particles[b].x, particles[b].y - particles[b].size / 3)
                         ctx.stroke()
                     }
                 }

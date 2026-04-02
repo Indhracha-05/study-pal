@@ -40,10 +40,6 @@ export default function Home() {
                     <ParticleCanvas />
 
                     <div className="container mx-auto text-center max-w-4xl relative z-10">
-                        <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary mb-8 backdrop-blur-sm">
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            The Ultimate Study Companion
-                        </div>
                         <h2 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
                             Study Together, <br className="hidden md:block" />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">Achieve More.</span>
@@ -52,7 +48,7 @@ export default function Home() {
                             Join a community of motivated learners. Track productivity, join study groups, and climb the leaderboard in a stress-free environment.
                         </p>
                         <div className="flex justify-center gap-4">
-                            <Link to="/dashboard">
+                            <Link to="/login">
                                 <Button size="lg" className="rounded-full px-8 h-14 text-lg shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 group">
                                     Start Studying
                                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

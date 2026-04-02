@@ -1,18 +1,17 @@
 import { Button } from "@/components/ui/button"
-import { Play, Pause, RotateCcw, Coffee, Brain, CheckCircle2, PlusCircle } from "lucide-react"
+import { Play, Pause, RotateCcw, Coffee, Brain } from "lucide-react"
 import { useTimer } from "@/contexts/TimerContext"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { db } from "@/lib/firebase"
 import { doc, updateDoc } from "firebase/firestore"
 import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 
 export default function Sessions() {
     const { 
         timeLeft, 
         isActive, 
         mode, 
-        topic, 
-        setTopic, 
         toggleTimer, 
         resetTimer, 
         setTimerMode, 
@@ -22,8 +21,12 @@ export default function Sessions() {
         setSelectedTaskId,
         showFeedback,
         setShowFeedback,
+        showTransitionFeedback,
+        setShowTransitionFeedback,
         lastSessionTaskId
     } = useTimer()
+
+    const navigate = useNavigate()
 
     const currentTask = tasks.find(t => t.id === lastSessionTaskId)
 
@@ -87,11 +90,32 @@ export default function Sessions() {
                 </div>
 
                 <div className="flex gap-4">
-                    <Button size="lg" className="w-32" onClick={toggleTimer}>
-                        {isActive ? <><Pause className="mr-2 w-4 h-4" /> Pause</> : <><Play className="mr-2 w-4 h-4" /> Start</>}
+                    <Button 
+                        size="lg" 
+                        className="w-48 glow-btn font-bold relative group" 
+                        onClick={() => {
+                            if (mode === "FOCUS" && !selectedTaskId) {
+                                toast.warning("Please select a task to focus on first!", {
+                                    description: "You can add new tasks in the Calendar page.",
+                                    action: {
+                                        label: "Go to Calendar",
+                                        onClick: () => navigate("/dashboard/calendar")
+                                    }
+                                });
+                                return;
+                            }
+                            toggleTimer();
+                        }}
+                    >
+                        {isActive ? <><Pause className="mr-3 w-5 h-5 transition-transform group-hover:scale-110" /> PAUSE</> : <><Play className="mr-3 w-5 h-5 transition-transform group-hover:scale-110" /> START FOCUS</>}
+                        {mode === "FOCUS" && !selectedTaskId && (
+                             <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-destructive/90 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10 shadow-xl pointer-events-none mb-2">
+                                ⚠️ TASK REQUIRED
+                             </div>
+                        )}
                     </Button>
-                    <Button size="lg" variant="outline" onClick={resetTimer}>
-                        <RotateCcw className="w-4 h-4" />
+                    <Button size="lg" variant="outline" className="w-16 h-12 rounded-xl border-white/5 bg-white/5 hover:bg-white/10" onClick={resetTimer}>
+                        <RotateCcw className="w-5 h-5" />
                     </Button>
                 </div>
 
@@ -121,56 +145,120 @@ export default function Sessions() {
                     </div>
                 )}
 
-                {/* Session Feedback Dialog */}
-                <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-                    <DialogContent className="sm:max-w-md">
+                {/* Unified Session Mastery Dialog */}
+                <Dialog open={showFeedback || showTransitionFeedback} onOpenChange={(open) => { setShowFeedback(open); setShowTransitionFeedback(open); }}>
+                    <DialogContent className="sm:max-w-md glass-card border-primary/20">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
                                 <Brain className="w-5 h-5 text-primary" />
-                                Session Complete!
+                                {showFeedback ? "Goal Reached!" : "Session Complete!"} 🔔
                             </DialogTitle>
                             <DialogDescription>
-                                You've finished a focus session for <strong>"{currentTask?.title || "your task"}"</strong>.
+                                {currentTask ? (
+                                    <>Progress logged for <strong>"{currentTask.title}"</strong>.</>
+                                ) : (
+                                    <>Great job! You finished a focus session.</>
+                                )}
                             </DialogDescription>
                         </DialogHeader>
                         
-                        <div className="py-6 flex flex-col items-center justify-center space-y-4">
-                            <div className="text-center">
-                                <p className="text-sm text-muted-foreground mb-1">Pomo Progress</p>
-                                <div className="text-3xl font-bold text-primary">
-                                    {currentTask?.currentPomos || 0} / {currentTask?.totalPomos || 1}
-                                </div>
-                            </div>
-                            
-                            {currentTask && (currentTask.currentPomos || 0) >= (currentTask.totalPomos || 1) ? (
-                                <div className="bg-green-500/10 text-green-600 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4" /> Goal Reached!
-                                </div>
-                            ) : (
-                                <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-full text-xs font-bold">
-                                    Keep going! Almost there.
+                        <div className="py-2 space-y-6">
+                            {currentTask && (
+                                <div className="flex flex-col items-center bg-primary/5 rounded-2xl py-4 border border-primary/10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Current Goal Progress</p>
+                                    <div className="text-3xl font-black text-primary">
+                                        {currentTask.currentPomos} / {currentTask.totalPomos || 1}
+                                    </div>
+                                    {showFeedback && (
+                                        <div className="mt-3 flex gap-2">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm"
+                                                className="h-8 text-[10px] uppercase font-bold border-primary/20 hover:bg-primary/10"
+                                                onClick={() => handleAddPomos(1)}
+                                            >
+                                                +1 Pomo
+                                            </Button>
+                                            <Button 
+                                                size="sm"
+                                                className="h-8 text-[10px] uppercase font-bold bg-green-600 hover:bg-green-700"
+                                                onClick={handleCompleteTask}
+                                            >
+                                                Strike Off ✅
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
+
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground">Select Next Phase</p>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <Button 
+                                        className="w-full rounded-xl h-14 glow-btn font-bold flex justify-between px-6 border-none"
+                                        onClick={() => {
+                                            setTimerMode("FOCUS");
+                                            setShowFeedback(false);
+                                            setShowTransitionFeedback(false);
+                                            toast.success("Locked in! Starting next Focus session.");
+                                            toggleTimer();
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Brain className="w-5 h-5" />
+                                            <span className="text-sm">Continue Focus</span>
+                                        </div>
+                                        <span className="text-[10px] opacity-70">25:00</span>
+                                    </Button>
+                                    
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button 
+                                            variant="outline"
+                                            className="rounded-xl h-14 flex flex-col items-center justify-center gap-1 hover:bg-green-500/10 hover:text-green-500 border-white/5"
+                                            onClick={() => {
+                                                setTimerMode("SHORT_BREAK");
+                                                setShowFeedback(false);
+                                                setShowTransitionFeedback(false);
+                                                toast.success("Time for a quick recharge!");
+                                                toggleTimer();
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Coffee className="w-4 h-4" />
+                                                <span className="text-xs font-bold">Short Break</span>
+                                            </div>
+                                            <span className="text-[9px] opacity-60 font-mono">05:00</span>
+                                        </Button>
+
+                                        <Button 
+                                            variant="outline"
+                                            className="rounded-xl h-14 flex flex-col items-center justify-center gap-1 hover:bg-blue-500/10 hover:text-blue-500 border-white/5"
+                                            onClick={() => {
+                                                setTimerMode("LONG_BREAK");
+                                                setShowFeedback(false);
+                                                setShowTransitionFeedback(false);
+                                                toast.success("Desktop reset time!");
+                                                toggleTimer();
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <RotateCcw className="w-4 h-4" />
+                                                <span className="text-xs font-bold">Long Break</span>
+                                            </div>
+                                            <span className="text-[9px] opacity-60 font-mono">15:00</span>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                            <Button 
-                                variant="outline" 
-                                className="flex-1 gap-2"
-                                onClick={() => handleAddPomos(1)}
-                            >
-                                <PlusCircle className="w-4 h-4" /> +1 Pomo
-                            </Button>
-                            <Button 
-                                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
-                                onClick={handleCompleteTask}
-                            >
-                                <CheckCircle2 className="w-4 h-4" /> Strike Off
-                            </Button>
-                        </DialogFooter>
-                        <div className="text-center">
-                            <Button variant="ghost" size="sm" onClick={() => setShowFeedback(false)} className="text-muted-foreground text-[10px]">
-                                Keep Task Active
+                        <div className="pt-2 flex justify-center">
+                            <Button variant="ghost" size="sm" onClick={() => {
+                                setSelectedTaskId("");
+                                setShowFeedback(false);
+                                setShowTransitionFeedback(false);
+                            }} className="text-[9px] font-black text-muted-foreground uppercase tracking-widest hover:text-destructive hover:bg-transparent">
+                                Switch Task 🔄
                             </Button>
                         </div>
                     </DialogContent>

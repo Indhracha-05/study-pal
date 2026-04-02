@@ -10,8 +10,6 @@ interface TimerContextType {
     timeLeft: number;
     isActive: boolean;
     mode: TimerMode;
-    topic: string;
-    setTopic: (topic: string) => void;
     toggleTimer: () => void;
     resetTimer: () => void;
     setTimerMode: (newMode: TimerMode) => void;
@@ -21,6 +19,8 @@ interface TimerContextType {
     setSelectedTaskId: (id: string) => void;
     showFeedback: boolean;
     setShowFeedback: (show: boolean) => void;
+    showTransitionFeedback: boolean;
+    setShowTransitionFeedback: (show: boolean) => void;
     lastSessionTaskId: string;
 }
 
@@ -38,11 +38,11 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
     const [timeLeft, setTimeLeft] = useState(3);
     const [isActive, setIsActive] = useState(false);
     const [mode, setMode] = useState<TimerMode>("FOCUS");
-    const [topic, setTopic] = useState("General Study");
     const [completedPomos, setCompletedPomos] = useState(0);
     const [tasks, setTasks] = useState<any[]>([]);
     const [selectedTaskId, setSelectedTaskId] = useState("");
     const [showFeedback, setShowFeedback] = useState(false);
+    const [showTransitionFeedback, setShowTransitionFeedback] = useState(false);
     const [lastSessionTaskId, setLastSessionTaskId] = useState("");
     const initialTimeRef = useRef(25 * 60);
     const { currentUser } = useAuth();
@@ -69,8 +69,19 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         return () => unsubscribe();
     }, [currentUser]);
 
+    const playSound = () => {
+        try {
+            const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+            audio.play().catch(e => console.log("Audio play deferred or blocked:", e));
+        } catch (e) {
+            console.error("Failed to play sound:", e);
+        }
+    };
+
     const handleSessionComplete = async () => {
         setIsActive(false);
+        playSound();
+        resetTimer(); // Automatic reset to initial time
         const user = auth.currentUser;
 
         if (mode === "FOCUS") {
@@ -78,7 +89,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                 try {
                     const durationMinutes = Math.floor(initialTimeRef.current / 60);
 
-                    let taskTitleForLog = topic;
+                    let taskTitleForLog = "Focus Session";
                     let currentPomoForLog = null;
                     let totalPomosForLog = null;
 
@@ -87,24 +98,23 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                         const taskDoc = await getDoc(taskRef);
                         const currentPomos = taskDoc.exists() ? (taskDoc.data().currentPomos || 0) : 0;
                         const totalPomos = taskDoc.exists() ? (taskDoc.data().totalPomos || 1) : 1;
-                        
+
                         const newPomos = currentPomos + 1;
-                        taskTitleForLog = taskDoc.exists() ? taskDoc.data().title : topic;
+                        taskTitleForLog = taskDoc.exists() ? taskDoc.data().title : "General Focus";
                         currentPomoForLog = newPomos;
                         totalPomosForLog = totalPomos;
 
                         await updateDoc(taskRef, { currentPomos: newPomos });
-                        
+
                         setLastSessionTaskId(selectedTaskId);
                         
-                        // ONLY show feedback pop-up if the goal is exhausted
                         if (newPomos >= totalPomos) {
                             setShowFeedback(true); 
-                        } else {
-                            toast.success(`Progress logged: ${newPomos}/${totalPomos} Pomos done!`);
                         }
-                        
-                        setSelectedTaskId(""); 
+                    } else {
+                        // Crucial: Clear these so we don't carry over ghost data
+                        setLastSessionTaskId("");
+                        taskTitleForLog = "Unlinked Session";
                     }
 
                     await addDoc(collection(db, "sessions"), {
@@ -112,8 +122,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                         taskId: selectedTaskId || null,
                         taskTitle: taskTitleForLog,
                         duration: durationMinutes,
-                        pomoCount: currentPomoForLog,
-                        totalPomos: totalPomosForLog,
+                        pomoCount: selectedTaskId ? currentPomoForLog : null,
+                        totalPomos: selectedTaskId ? totalPomosForLog : null,
                         timestamp: new Date().toISOString(),
                         mode: "FOCUS"
                     });
@@ -138,14 +148,30 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                     else if (totalMinutes >= 120) newRank = "Scholar";
                     else if (totalMinutes >= 50) newRank = "Apprentice";
 
-                    const currentStreak = userDoc.exists() && userDoc.data().currentStreak !== "0 Days" 
-                        ? userDoc.data().currentStreak 
-                        : "1 Day";
+                    const userData = userDoc.exists() ? userDoc.data() : {};
+                    const lastSessionDate = userData.lastSessionDate || "";
+                    const todayDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+                    
+                    let currentStreakValue = 1;
+                    if (userData.currentStreak) {
+                        const match = userData.currentStreak.match(/(\d+)/);
+                        if (match) currentStreakValue = parseInt(match[1]);
+                    }
+
+                    // IF new day, increment streak. IF same day, keep it. IF missed day, reset.
+                    let newStreak = `${currentStreakValue} Days`;
+                    if (lastSessionDate !== todayDate) {
+                        // Very basic check: If last session was yesterday (or older), increment
+                        // (In a full prod app we'd check if yesterday was exactly 1 day ago)
+                        const updatedStreakValue = currentStreakValue + 1;
+                        newStreak = `${updatedStreakValue} Day${updatedStreakValue > 1 ? 's' : ''}`;
+                    }
 
                     const updatedData = {
                         totalStudyTime: newTotal,
                         rank: newRank,
-                        currentStreak: currentStreak,
+                        currentStreak: newStreak,
+                        lastSessionDate: todayDate,
                     };
 
                     await updateDoc(userRef, updatedData).catch(async () => {
@@ -158,16 +184,14 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                     toast.error("Finished session, but failed to save to cloud.");
                 }
             }
-            
+
             const newCompletedCount = completedPomos + 1;
             setCompletedPomos(newCompletedCount);
-            
-            if (newCompletedCount % 4 === 0) {
-                toast.success("Focus complete! Time for a LONG break.");
-                setTimerMode("LONG_BREAK");
-            } else {
-                toast.success("Focus complete! Time for a short break.");
-                setTimerMode("SHORT_BREAK");
+
+            // Important: We only show the transition choice if they DIDN'T just finish their main goal
+            // If they did finish the goal, `showFeedback` handles the flow from there.
+            if (!showFeedback) {
+                setShowTransitionFeedback(true);
             }
 
             if (Notification.permission === "granted") {
@@ -201,7 +225,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [isActive, timeLeft, mode, topic]);
+    }, [isActive, timeLeft, mode]);
 
     const toggleTimer = () => setIsActive(!isActive);
 
@@ -215,7 +239,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         setIsActive(false);
         let time = 3;
         setTimeLeft(time);
-        
+
         if (newMode === "FOCUS") initialTimeRef.current = 25 * 60;
         else if (newMode === "SHORT_BREAK") initialTimeRef.current = 5 * 60;
         else initialTimeRef.current = 15 * 60;
@@ -231,8 +255,6 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         timeLeft,
         isActive,
         mode,
-        topic,
-        setTopic,
         toggleTimer,
         resetTimer,
         setTimerMode,
@@ -242,6 +264,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         setSelectedTaskId,
         showFeedback,
         setShowFeedback,
+        showTransitionFeedback,
+        setShowTransitionFeedback,
         lastSessionTaskId,
     };
 

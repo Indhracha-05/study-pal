@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import Groups from './pages/Groups'
+import StudyRoom from './pages/StudyRoom'
 import Sessions from './pages/Sessions'
 import Leaderboard from './pages/Leaderboard'
 import Login from './pages/Login'
@@ -20,6 +21,7 @@ function App() {
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="groups" element={<Groups />} />
+                <Route path="groups/:groupId/room" element={<StudyRoom />} />
                 <Route path="sessions" element={<Sessions />} />
                 <Route path="calendar" element={<Calendar />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
