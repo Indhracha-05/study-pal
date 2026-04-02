@@ -16,7 +16,21 @@ import { Label } from "@/components/ui/label"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore"
+import { 
+    collection, 
+    addDoc, 
+    onSnapshot, 
+    query, 
+    orderBy, 
+    serverTimestamp, 
+    deleteDoc, 
+    doc, 
+    getDoc, 
+    updateDoc, 
+    arrayUnion, 
+    arrayRemove, 
+    setDoc 
+} from "firebase/firestore"
 import { useTimer } from "@/contexts/TimerContext"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -88,19 +102,31 @@ export default function Groups() {
 
             // Add to user's joined groups using atomic union
             const userRef = doc(db, "users", currentUser.uid)
-            await updateDoc(userRef, {
-                joinedGroups: arrayUnion(groupRef.id)
-            })
+            try {
+                // Ensure users collection entry exists or update it safely
+                await setDoc(userRef, { 
+                    joinedGroups: arrayUnion(groupRef.id) 
+                }, { merge: true })
+            } catch (userErr) {
+                console.warn("User meta sync failed, but group was created:", userErr)
+            }
 
             setNewGroupName("")
             setOpen(false)
             toast.success(`Session in "${newGroupName}" starting! 🚀`)
-
+            
             // Navigate immediately into the room
             navigate(`/dashboard/groups/${groupRef.id}/room`)
         } catch (error: any) {
-            console.error("Session initialization failure:", error)
-            toast.error(error.message || "Failed to start session.")
+            console.error("CRITICAL: Session initialization failure:", error)
+            // Be more descriptive for the user to debug Vercel issues
+            if (error.code === 'permission-denied') {
+                toast.error("PERMISSION DENIED: Check your Firestore rules!")
+            } else if (error.code === 'unavailable') {
+                toast.error("DATABASE OFFLINE: Check your internet or Firebase config!")
+            } else {
+                toast.error(`ERROR ${error.code || 'UNKNOWN'}: ${error.message}`)
+            }
         } finally {
             setCreating(false)
         }
@@ -112,10 +138,10 @@ export default function Groups() {
             const groupRef = doc(db, "groups", groupId)
             const userRef = doc(db, "users", currentUser.uid)
 
-            // Update user list atomically
-            await updateDoc(userRef, {
-                joinedGroups: arrayUnion(groupId)
-            })
+            // Update user list atomically and safely (create doc if missing)
+            await setDoc(userRef, { 
+                joinedGroups: arrayUnion(groupId) 
+            }, { merge: true })
 
             // Update group member count/list atomically
             const currentGroup = groups.find(g => g.id === groupId)
@@ -125,9 +151,9 @@ export default function Groups() {
             })
 
             toast.success(`Linked to ${groupName} frequency. 🛰️`)
-        } catch (err) {
+        } catch (err: any) {
             console.error("Requisition failure:", err)
-            toast.error("Failed to link frequency.")
+            toast.error(`ERROR ${err.code || 'UNKNOWN'}: Link failure.`)
         }
     }
 
