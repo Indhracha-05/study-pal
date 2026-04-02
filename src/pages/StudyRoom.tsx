@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { db } from "@/lib/firebase"
 import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore"
 import { useAuth } from "@/contexts/AuthContext"
@@ -28,6 +28,8 @@ export default function StudyRoom() {
     const [groupName, setGroupName] = useState("Study Room")
     const [members, setMembers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const lastStatusRef = useRef<string>("")
+    const lastTaskRef = useRef<string | null>(null)
 
     const currentTask = tasks.find(t => t.id === selectedTaskId)
 
@@ -67,10 +69,18 @@ export default function StudyRoom() {
     // Update own status whenever timer or task changes
     useEffect(() => {
         if (!currentUser) return
-        updateDoc(doc(db, "users", currentUser.uid), {
-            "presence.status": isActive ? (mode === "FOCUS" ? "Deep Focus 🔥" : "On Break ☕") : "Prepping",
-            "presence.currentTask": (isActive && mode === "FOCUS") ? (currentTask?.title || "Focusing") : null
-        }).catch(() => {})
+        const newStatus = isActive ? (mode === "FOCUS" ? "Deep Focus 🔥" : "On Break ☕") : "Prepping"
+        const newTask = (isActive && mode === "FOCUS") ? (currentTask?.title || "Focusing") : null
+
+        // ONLY update if something actually changed to prevent infinite loops
+        if (newStatus !== lastStatusRef.current || newTask !== lastTaskRef.current) {
+            lastStatusRef.current = newStatus
+            lastTaskRef.current = newTask
+            updateDoc(doc(db, "users", currentUser.uid), {
+                "presence.status": newStatus,
+                "presence.currentTask": newTask
+            }).catch(() => {})
+        }
     }, [isActive, mode, currentUser, selectedTaskId, currentTask?.title])
 
     // Listen to all members in the group
