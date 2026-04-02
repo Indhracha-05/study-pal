@@ -94,13 +94,13 @@ export default function Groups() {
 
             setNewGroupName("")
             setOpen(false)
-            toast.success(`Sanctuary "${newGroupName}" established! 📡`)
+            toast.success(`Session in "${newGroupName}" starting! 🚀`)
 
             // Navigate immediately into the room
             navigate(`/dashboard/groups/${groupRef.id}/room`)
         } catch (error: any) {
-            console.error("Group creation protocol failure:", error)
-            toast.error(error.message || "Failed to establish sanctuary.")
+            console.error("Session initialization failure:", error)
+            toast.error(error.message || "Failed to start session.")
         } finally {
             setCreating(false)
         }
@@ -245,7 +245,7 @@ export default function Groups() {
                                 </div>
                                 <DialogFooter>
                                     <Button onClick={handleCreateGroup} className="w-full font-black" disabled={creating}>
-                                        {creating ? "UPLOADING..." : "ESTABLISH LINK"}
+                                        {creating ? "INITIALIZING..." : "START SESSION"}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>
