@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore"
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore"
 import { useTimer } from "@/contexts/TimerContext"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -31,6 +31,7 @@ export default function Groups() {
     const navigate = useNavigate()
     const { toggleTimer } = useTimer()
     const [inviteCode, setInviteCode] = useState("")
+    const [creating, setCreating] = useState(false)
 
     const GLOBAL_ROOMS = [
         { id: "global-library", name: "The Great Library", desc: "For the most intense deep work sessions.", icon: "🏛️" },
@@ -72,6 +73,7 @@ export default function Groups() {
 
     const handleCreateGroup = async () => {
         if (!newGroupName.trim() || !currentUser) return
+        setCreating(true)
 
         try {
             const groupRef = await addDoc(collection(db, "groups"), {
@@ -80,19 +82,27 @@ export default function Groups() {
                 memberIds: [currentUser.uid],
                 activeNow: 0,
                 createdAt: serverTimestamp(),
-                createdBy: currentUser.uid
+                createdBy: currentUser.uid,
+                chatMessages: []
             })
 
-            // Add to user's joined groups
+            // Add to user's joined groups using atomic union
             const userRef = doc(db, "users", currentUser.uid)
-            const newJoined = [...userGroups, groupRef.id]
-            await updateDoc(userRef, { joinedGroups: newJoined })
+            await updateDoc(userRef, { 
+                joinedGroups: arrayUnion(groupRef.id) 
+            })
 
             setNewGroupName("")
             setOpen(false)
-            toast.success(`Group "${newGroupName}" created!`)
+            toast.success(`Sanctuary "${newGroupName}" established! 📡`)
+            
+            // Navigate immediately into the room
+            navigate(`/dashboard/groups/${groupRef.id}/room`)
         } catch (error: any) {
-            toast.error(error.message || "Failed to create group")
+            console.error("Group creation protocol failure:", error)
+            toast.error(error.message || "Failed to establish sanctuary.")
+        } finally {
+            setCreating(false)
         }
     }
 
@@ -102,23 +112,22 @@ export default function Groups() {
             const groupRef = doc(db, "groups", groupId)
             const userRef = doc(db, "users", currentUser.uid)
 
-            // Update user list
-            const newJoined = [...userGroups, groupId]
-            await updateDoc(userRef, { joinedGroups: newJoined })
+            // Update user list atomically
+            await updateDoc(userRef, { 
+                joinedGroups: arrayUnion(groupId) 
+            })
 
-            // Update group member count/list
-            const groupDoc = await getDoc(groupRef)
-            if (groupDoc.exists()) {
-                const currentMembers = groupDoc.data().memberIds || []
-                await updateDoc(groupRef, {
-                    memberIds: [...currentMembers, currentUser.uid],
-                    members: currentMembers.length + 1
-                })
-            }
+            // Update group member count/list atomically
+            const currentGroup = groups.find(g => g.id === groupId)
+            await updateDoc(groupRef, {
+                memberIds: arrayUnion(currentUser.uid),
+                members: (currentGroup?.memberIds?.length || 0) + 1
+            })
 
-            toast.success(`Welcome to ${groupName}!`)
+            toast.success(`Linked to ${groupName} frequency. 🛰️`)
         } catch (err) {
-            toast.error("Failed to join group")
+            console.error("Requisition failure:", err)
+            toast.error("Failed to link frequency.")
         }
     }
 
@@ -150,24 +159,20 @@ export default function Groups() {
             const groupRef = doc(db, "groups", groupId)
             const userRef = doc(db, "users", currentUser.uid)
 
-            // Update user list
-            const newJoined = userGroups.filter(id => id !== groupId)
-            await updateDoc(userRef, { joinedGroups: newJoined })
+            // Update user list atomically
+            await updateDoc(userRef, { 
+                joinedGroups: arrayRemove(groupId) 
+            })
 
-            // Update group member count/list
-            const groupDoc = await getDoc(groupRef)
-            if (groupDoc.exists()) {
-                const currentMembers = groupDoc.data().memberIds || []
-                const newMembers = currentMembers.filter((id: string) => id !== currentUser.uid)
-                await updateDoc(groupRef, {
-                    memberIds: newMembers,
-                    members: Math.max(0, newMembers.length)
-                })
-            }
+            // Update group member metadata atomically
+            await updateDoc(groupRef, {
+                memberIds: arrayRemove(currentUser.uid)
+            })
 
-            toast.success(`Left ${groupName}`)
+            toast.success(`Frequency disconnected from ${groupName}.`)
         } catch (err) {
-            toast.error("Failed to leave group")
+            console.error("Disconnect failure:", err)
+            toast.error("Failed to sever link.")
         }
     }
 
@@ -239,7 +244,9 @@ export default function Groups() {
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button onClick={handleCreateGroup} className="w-full font-black">START SESSION</Button>
+                                    <Button onClick={handleCreateGroup} className="w-full font-black" disabled={creating}>
+                                        {creating ? "UPLOADING..." : "ESTABLISH LINK"}
+                                    </Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
