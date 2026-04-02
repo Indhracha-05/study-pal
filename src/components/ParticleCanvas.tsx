@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react"
+import { useTimer } from "@/contexts/TimerContext"
 
 export default function ParticleCanvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const { particleDensity } = useTimer()
 
     useEffect(() => {
         const canvas = canvasRef.current
@@ -83,7 +85,10 @@ export default function ParticleCanvas() {
         const init = () => {
             particles = []
             if (!canvas) return
-            const numberOfParticles = (canvas.height * canvas.width) / 15000
+            // Calculate particles based on density prop (0-100)
+            // Base divisor was 15000. We'll scale it.
+            const divisor = 25000 * (1.1 - (particleDensity / 100))
+            const numberOfParticles = (canvas.height * canvas.width) / divisor
             
             for (let i = 0; i < numberOfParticles; i++) {
                 const size = (Math.random() * 1.5) + 1.2
@@ -176,7 +181,7 @@ export default function ParticleCanvas() {
             cancelAnimationFrame(animationFrameId)
             observer.disconnect()
         }
-    }, [])
+    }, [particleDensity])
 
     return (
         <canvas

@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Users, LayoutDashboard, Trophy, Timer, Settings, LogOut, Calendar, Brain } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { Users, LayoutDashboard, Trophy, Timer, Settings, LogOut, Calendar, Brain, BarChart3 } from "lucide-react"
 import { auth } from "@/lib/firebase"
 import { toast } from "sonner"
 
@@ -10,6 +10,7 @@ const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Groups", href: "/dashboard/groups" },
     { icon: Timer, label: "Focus Timer", href: "/dashboard/sessions" },
+    { icon: BarChart3, label: "Study Intel", href: "/dashboard/reports" },
     { icon: Calendar, label: "Calendar", href: "/dashboard/calendar" },
     { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard" },
 ]
@@ -30,7 +31,7 @@ export function DashboardSidebar() {
     }
 
     return (
-        <div className="flex h-screen w-72 flex-col glass-sidebar m-0 border-r border-white/5">
+        <div className="flex h-screen w-72 shrink-0 flex-col glass-sidebar m-0 border-r border-border">
             <div className="p-10">
                 <Link to="/" className="hover:opacity-80 transition-opacity flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-primary shadow-lg shadow-primary/40 flex items-center justify-center">
@@ -49,7 +50,7 @@ export function DashboardSidebar() {
                                     "w-full justify-start transition-all group rounded-xl mb-1", 
                                     pathname === item.href 
                                         ? "nav-link-active text-primary bg-primary/10 hover:bg-primary/20 hover:text-primary shadow-sm shadow-primary/10" 
-                                        : "hover:bg-white/5 pl-4"
+                                        : "hover:bg-slate-100 dark:hover:bg-white/5 pl-4"
                                 )}
                                 asChild
                             >
@@ -67,20 +68,25 @@ export function DashboardSidebar() {
                     ))}
                 </div>
             </div>
-            <div className="p-6 border-t border-white/5 space-y-3">
-                <div className="flex items-center justify-between px-3 mb-2 bg-muted/30 py-2 rounded-xl border border-white/5">
-                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Theme</span>
+            <div className="px-6 pt-5 pb-7 border-t border-border flex flex-col gap-2">
+                {/* Theme Row */}
+                <div className="flex items-center justify-between px-3 py-3 rounded-xl bg-muted/30 mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Theme</span>
                     <ThemeToggle />
                 </div>
-                <Button variant="ghost" className="w-full justify-start group hover:bg-primary/5" asChild>
+
+                {/* Settings */}
+                <Button variant="ghost" className="w-full justify-start group hover:bg-primary/5 h-11" asChild>
                     <Link to="/dashboard/settings">
                         <Settings className="mr-3 h-4 w-4 text-muted-foreground group-hover:rotate-45 transition-transform" />
                         <span className="text-sm tracking-wide">Settings</span>
                     </Link>
                 </Button>
+
+                {/* Logout */}
                 <Button
                     variant="ghost"
-                    className="w-full justify-start text-destructive/80 hover:text-destructive hover:bg-destructive/10 group"
+                    className="w-full justify-start text-destructive/70 hover:text-destructive hover:bg-destructive/10 group h-11"
                     onClick={handleLogout}
                 >
                     <LogOut className="mr-3 h-4 w-4 transition-transform group-hover:-translate-x-1" />

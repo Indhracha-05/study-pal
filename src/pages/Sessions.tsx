@@ -114,7 +114,7 @@ export default function Sessions() {
                              </div>
                         )}
                     </Button>
-                    <Button size="lg" variant="outline" className="w-16 h-12 rounded-xl border-white/5 bg-white/5 hover:bg-white/10" onClick={resetTimer}>
+                    <Button size="lg" variant="outline" className="w-16 h-12 rounded-xl border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" onClick={resetTimer}>
                         <RotateCcw className="w-5 h-5" />
                     </Button>
                 </div>
@@ -214,7 +214,7 @@ export default function Sessions() {
                                     <div className="grid grid-cols-2 gap-2">
                                         <Button 
                                             variant="outline"
-                                            className="rounded-xl h-14 flex flex-col items-center justify-center gap-1 hover:bg-green-500/10 hover:text-green-500 border-white/5"
+                                            className="rounded-xl h-14 flex flex-col items-center justify-center gap-1 hover:bg-green-500/10 hover:text-green-500 border-slate-200 dark:border-white/5"
                                             onClick={() => {
                                                 setTimerMode("SHORT_BREAK");
                                                 setShowFeedback(false);
@@ -232,7 +232,7 @@ export default function Sessions() {
 
                                         <Button 
                                             variant="outline"
-                                            className="rounded-xl h-14 flex flex-col items-center justify-center gap-1 hover:bg-blue-500/10 hover:text-blue-500 border-white/5"
+                                            className="rounded-xl h-14 flex flex-col items-center justify-center gap-1 hover:bg-blue-500/10 hover:text-blue-500 border-slate-200 dark:border-white/5"
                                             onClick={() => {
                                                 setTimerMode("LONG_BREAK");
                                                 setShowFeedback(false);

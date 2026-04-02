@@ -84,13 +84,17 @@ export default function Dashboard() {
             console.error("Tasks snapshot error:", error)
         })
 
-        // Listen to active groups count
-        const groupsQuery = collection(db, "groups")
-        const unsubscribeGroups = onSnapshot(groupsQuery, (snapshot) => {
-            setActiveGroupsCount(snapshot.size)
-        }, (error) => {
-            console.error("Groups count error:", error)
-        })
+        // Listen to joined groups count from user profile for accurate deduction
+        let unsubscribeGroups = () => {}
+        if (currentUser) {
+            const userRef = doc(db, "users", currentUser.uid)
+            unsubscribeGroups = onSnapshot(userRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const joinedGroups = snapshot.data().joinedGroups || []
+                    setActiveGroupsCount(joinedGroups.length)
+                }
+            })
+        }
 
         // Listen to all users for rank
         const usersQuery = collection(db, "users")
@@ -199,7 +203,7 @@ export default function Dashboard() {
                 <Card className="glass-card overflow-hidden shimmer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Study Time</CardTitle>
-                        <Timer className="h-4 w-4 text-primary" />
+                        <Timer className="h-4 w-4 text-primary glow-icon" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-black">{stats.totalStudyTime}</div>
@@ -208,7 +212,7 @@ export default function Dashboard() {
                 <Card className="glass-card overflow-hidden shimmer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current Streak</CardTitle>
-                        <Flame className="h-4 w-4 text-orange-500" />
+                        <Flame className="h-4 w-4 text-orange-500 glow-icon" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-black">{stats.currentStreak}</div>
@@ -217,7 +221,7 @@ export default function Dashboard() {
                 <Card className="glass-card overflow-hidden shimmer border-primary/20 bg-primary/5">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-primary">Global Rank</CardTitle>
-                        <Trophy className="h-4 w-4 text-yellow-500" />
+                        <Trophy className="h-4 w-4 text-yellow-500 glow-icon" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-black text-primary">#{userRank ?? "..."}</div>
@@ -227,7 +231,7 @@ export default function Dashboard() {
                 <Card className="glass-card overflow-hidden shimmer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active Groups</CardTitle>
-                        <Users className="h-4 w-4 text-blue-500" />
+                        <Users className="h-4 w-4 text-blue-500 glow-icon" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-black">{activeGroupsCount}</div>
@@ -273,7 +277,7 @@ export default function Dashboard() {
                 <Card className="col-span-3 glass-card border-none">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg font-heading">Active Tasks</CardTitle>
-                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5">
+                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-slate-200 dark:border-white/5">
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -316,7 +320,7 @@ export default function Dashboard() {
                                 <p className="text-sm text-muted-foreground py-8 text-center italic">No tasks yet.</p>
                             ) : (
                                 sortedTasks.map(task => (
-                                    <div key={task.id} className="flex items-center gap-4 group p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all">
+                                    <div key={task.id} className="flex items-center gap-4 group p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 border border-transparent hover:border-slate-200 dark:hover:border-white/5 transition-all">
                                         <button
                                             onClick={() => handleToggleTask(task.id, task.completed)}
                                             className="text-muted-foreground hover:text-primary transition-all flex-shrink-0"

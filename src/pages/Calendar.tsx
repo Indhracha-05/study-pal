@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/lib/firebase"
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns"
-import { ChevronLeft, ChevronRight, Clock, AlertCircle, Plus, Calendar as CalendarIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Edit2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
@@ -14,6 +14,7 @@ export default function Calendar() {
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [tasks, setTasks] = useState<any[]>([])
     const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
+    const [editingTask, setEditingTask] = useState<any>(null)
     const [newTask, setNewTask] = useState({ title: "", deadline: format(new Date(), "yyyy-MM-dd"), priority: "medium", totalPomos: 1 })
     const { currentUser } = useAuth()
 
@@ -57,6 +58,33 @@ export default function Calendar() {
         }
     }
 
+    const handleUpdateTask = async () => {
+        if (!editingTask?.title.trim() || !currentUser) return
+        try {
+            await updateDoc(doc(db, "tasks", editingTask.id), {
+                title: editingTask.title.trim(),
+                deadline: editingTask.deadline,
+                priority: editingTask.priority,
+                totalPomos: Number(editingTask.totalPomos)
+            })
+            setEditingTask(null)
+            toast.success("Task updated successfully!")
+        } catch (err) {
+            toast.error("Failed to update task")
+        }
+    }
+
+    const handleDeleteTask = async () => {
+        if (!editingTask || !currentUser) return
+        try {
+            await deleteDoc(doc(db, "tasks", editingTask.id))
+            setEditingTask(null)
+            toast.success("Task deleted!")
+        } catch (err) {
+            toast.error("Failed to delete task")
+        }
+    }
+
     const openAddTaskOnDate = (day: Date) => {
         setNewTask({ ...newTask, deadline: format(day, "yyyy-MM-dd") })
         setIsAddTaskOpen(true)
@@ -89,18 +117,6 @@ export default function Calendar() {
         })
     }
 
-    // Sort priority stack: Priority FIRST, then earlier Deadline
-    const sortedActiveTasks = tasks
-        .filter(t => !t.completed && t.deadline)
-        .sort((a, b) => {
-            const pMap: any = { high: 0, medium: 1, low: 2 }
-            const pDiff = (pMap[a.priority] || 1) - (pMap[b.priority] || 1)
-            
-            if (pDiff !== 0) return pDiff // If priorities are different, use that
-            
-            // If priorities are SAME, use earlier deadline
-            return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-        })
 
     return (
         <div className="space-y-6">
@@ -182,6 +198,64 @@ export default function Calendar() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Edit Task Dialog */}
+                    <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Edit Tracked Task</DialogTitle>
+                                <DialogDescription>Update parameters or discard this task entirely.</DialogDescription>
+                            </DialogHeader>
+                            {editingTask && (
+                                <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Task Name</label>
+                                        <Input 
+                                            placeholder="e.g. Calculus Midterm Study" 
+                                            value={editingTask.title}
+                                            onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Deadline</label>
+                                            <Input 
+                                                type="date"
+                                                value={editingTask.deadline}
+                                                onChange={(e) => setEditingTask({...editingTask, deadline: e.target.value})}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Number of Pomos ⏲️</label>
+                                            <Input 
+                                                type="number"
+                                                min="1"
+                                                max="12"
+                                                value={editingTask.totalPomos}
+                                                onChange={(e) => setEditingTask({...editingTask, totalPomos: parseInt(e.target.value) || 1})}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Priority 🚩</label>
+                                            <select 
+                                                className="w-full bg-background border rounded-md px-3 py-2 text-sm"
+                                                value={editingTask.priority}
+                                                onChange={(e) => setEditingTask({...editingTask, priority: e.target.value})}
+                                            >
+                                                <option value="high">High 🔥</option>
+                                                <option value="medium">Medium ⚡</option>
+                                                <option value="low">Low 💤</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <DialogFooter className="flex justify-between w-full sm:justify-between mt-4 gap-2">
+                                        <Button variant="destructive" onClick={handleDeleteTask}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button>
+                                        <Button onClick={handleUpdateTask}><Edit2 className="w-4 h-4 mr-2" /> Save Changes</Button>
+                                    </DialogFooter>
+                                </div>
+                            )}
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
@@ -215,11 +289,15 @@ export default function Calendar() {
                                         </span>
                                         <Plus className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
-                                    <div className="space-y-1 overflow-y-auto max-h-[85px] scrollbar-none pointer-events-none">
+                                    <div className="space-y-1 overflow-y-auto max-h-[85px] scrollbar-none relative z-10">
                                         {dayTasks.map(task => (
                                             <div
                                                 key={task.id}
-                                                className={`text-[9.5px] p-1.5 rounded-md border flex items-center gap-1.5 shadow-sm ${
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingTask(task);
+                                                }}
+                                                className={`text-[9.5px] p-1.5 rounded-md border flex items-center gap-1.5 shadow-sm cursor-pointer transition-all hover:brightness-110 ${
                                                     task.completed 
                                                         ? "bg-muted/50 text-muted-foreground line-through" 
                                                         : task.priority === "high"
@@ -246,67 +324,7 @@ export default function Calendar() {
                 </CardContent>
             </Card>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <Card className="border-none shadow-lg bg-background/50 backdrop-blur-sm lg:col-span-2">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-primary" />
-                            Next Deadlines
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {sortedActiveTasks
-                                .slice(0, 4)
-                                .map(task => (
-                                    <div key={task.id} className="flex flex-col p-4 border rounded-xl bg-card/50 hover:shadow-md transition-all">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                                                task.priority === "high" ? "bg-red-100 text-red-700" : task.priority === "medium" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                                            }`}>
-                                                {task.priority || "Normal"}
-                                            </span>
-                                            <CalendarIcon className="w-3 h-3 text-muted-foreground" />
-                                        </div>
-                                        <p className="font-bold text-sm mb-1">{task.title}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {format(new Date(task.deadline), "EEEE, MMM do")}
-                                        </p>
-                                    </div>
-                                ))}
-                        </div>
-                    </CardContent>
-                </Card>
 
-                <Card className="border-none shadow-lg bg-background/50 backdrop-blur-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-orange-500" />
-                            Smart priority Stack
-                        </CardTitle>
-                        <CardDescription>Priority first, then earlier deadline tie-breaker.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {sortedActiveTasks
-                                .slice(0, 5)
-                                .map((task, i) => (
-                                    <div key={task.id} className="flex items-center gap-3 group">
-                                        <span className="text-lg font-bold text-muted-foreground/20 group-hover:text-primary/40 transition-colors">0{i+1}</span>
-                                        <div className={`flex-1 p-3 border-l-2 rounded-r transition-all hover:translate-x-1 ${
-                                            task.priority === 'high' ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20' : 'border-primary bg-primary/5'
-                                        }`}>
-                                            <p className="text-sm font-bold">{task.title}</p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                Due {task.deadline ? format(new Date(task.deadline), "MMM d") : "No date"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
         </div>
     )
 }

@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Settings from './pages/Settings'
 import Calendar from './pages/Calendar'
+import Reports from './pages/Reports'
 import ProtectedRoute from './components/ProtectedRoute'
 import DashboardLayout from './layouts/DashboardLayout'
 
@@ -23,6 +24,7 @@ function App() {
                 <Route path="groups" element={<Groups />} />
                 <Route path="groups/:groupId/room" element={<StudyRoom />} />
                 <Route path="sessions" element={<Sessions />} />
+                <Route path="reports" element={<Reports />} />
                 <Route path="calendar" element={<Calendar />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
                 <Route path="settings" element={<Settings />} />

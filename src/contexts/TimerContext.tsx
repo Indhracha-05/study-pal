@@ -12,7 +12,7 @@ interface TimerContextType {
     mode: TimerMode;
     toggleTimer: () => void;
     resetTimer: () => void;
-    setTimerMode: (newMode: TimerMode) => void;
+    setTimerMode: (mode: TimerMode) => void;
     formatTime: (seconds: number) => string;
     tasks: any[];
     selectedTaskId: string;
@@ -22,6 +22,22 @@ interface TimerContextType {
     showTransitionFeedback: boolean;
     setShowTransitionFeedback: (show: boolean) => void;
     lastSessionTaskId: string;
+    focusLength: number;
+    shortBreakLength: number;
+    longBreakLength: number;
+    autoStartBreaks: boolean;
+    autoStartFocus: boolean;
+    
+    // System Configs
+    particleDensity: number;
+    adaptiveHUD: boolean;
+    glowIntensity: number;
+    isMuted: boolean;
+    notificationsEnabled: boolean;
+    dailyGoal: number;
+    
+    updateTimerSettings: (focus: number, short: number, long: number, autoBreak?: boolean, autoFocus?: boolean) => void;
+    updateSystemConfigs: (density: number, hud: boolean, glow: number, muted: boolean, notify: boolean, goal: number) => void;
 }
 
 const TimerContext = createContext<TimerContextType | undefined>(undefined);
@@ -35,7 +51,14 @@ export const useTimer = () => {
 };
 
 export const TimerProvider = ({ children }: { children: ReactNode }) => {
-    const [timeLeft, setTimeLeft] = useState(3);
+    const [focusLength, setFocusLength] = useState(() => Number(localStorage.getItem("pomo_focus")) || 25);
+    const [shortBreakLength, setShortBreakLength] = useState(() => Number(localStorage.getItem("pomo_short")) || 5);
+    const [longBreakLength, setLongBreakLength] = useState(() => Number(localStorage.getItem("pomo_long")) || 15);
+    const [autoStartBreaks, setAutoStartBreaks] = useState(() => localStorage.getItem("pomo_auto_break") === "true");
+    const [autoStartFocus, setAutoStartFocus] = useState(() => localStorage.getItem("pomo_auto_focus") === "true");
+    
+    //timeLeft should initialize based on current mode
+    const [timeLeft, setTimeLeft] = useState(() => (Number(localStorage.getItem("pomo_focus")) || 25) * 60);
     const [isActive, setIsActive] = useState(false);
     const [mode, setMode] = useState<TimerMode>("FOCUS");
     const [completedPomos, setCompletedPomos] = useState(0);
@@ -44,8 +67,72 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
     const [showFeedback, setShowFeedback] = useState(false);
     const [showTransitionFeedback, setShowTransitionFeedback] = useState(false);
     const [lastSessionTaskId, setLastSessionTaskId] = useState("");
-    const initialTimeRef = useRef(25 * 60);
+    
+    // System Configs
+    const [particleDensity, setParticleDensity] = useState(() => Number(localStorage.getItem("pomo_density")) || 50);
+    const [adaptiveHUD, setAdaptiveHUD] = useState(() => localStorage.getItem("pomo_hud") === "true");
+    const [glowIntensity, setGlowIntensity] = useState(() => Number(localStorage.getItem("pomo_glow")) || 1);
+    const [isMuted, setIsMuted] = useState(() => localStorage.getItem("pomo_muted") === "true");
+    const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("pomo_notify") !== "false");
+    const [dailyGoal, setDailyGoal] = useState(() => Number(localStorage.getItem("pomo_daily_goal")) || 4);
+
+    const initialTimeRef = useRef(focusLength * 60);
     const { currentUser } = useAuth();
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-timer-active', isActive.toString());
+    }, [isActive]);
+
+    useEffect(() => {
+        const savedGlow = localStorage.getItem("pomo_glow") || "1";
+        const savedHUD = localStorage.getItem("pomo_hud") === "true";
+        document.documentElement.style.setProperty("--glow-strength", savedGlow);
+        document.documentElement.setAttribute('data-hud', savedHUD.toString());
+    }, []);
+
+    const updateSystemConfigs = (density: number, hud: boolean, glow: number, muted: boolean, notify: boolean, goal: number) => {
+        setParticleDensity(density);
+        setAdaptiveHUD(hud);
+        setGlowIntensity(glow);
+        setIsMuted(muted);
+        setNotificationsEnabled(notify);
+        setDailyGoal(goal);
+
+        localStorage.setItem("pomo_density", density.toString());
+        localStorage.setItem("pomo_hud", hud.toString());
+        localStorage.setItem("pomo_glow", glow.toString());
+        localStorage.setItem("pomo_muted", muted.toString());
+        localStorage.setItem("pomo_notify", notify.toString());
+        localStorage.setItem("pomo_daily_goal", goal.toString());
+        
+        // Dynamic CSS var application for Glow Intensity and HUD
+        document.documentElement.style.setProperty("--glow-strength", glow.toString());
+        document.documentElement.setAttribute('data-hud', hud.toString());
+    };
+
+    const updateTimerSettings = (focus: number, short: number, long: number, autoBreak?: boolean, autoFocus?: boolean) => {
+        setFocusLength(focus);
+        setShortBreakLength(short);
+        setLongBreakLength(long);
+        localStorage.setItem("pomo_focus", focus.toString());
+        localStorage.setItem("pomo_short", short.toString());
+        localStorage.setItem("pomo_long", long.toString());
+
+        if (autoBreak !== undefined) {
+            setAutoStartBreaks(autoBreak);
+            localStorage.setItem("pomo_auto_break", autoBreak.toString());
+        }
+
+        if (autoFocus !== undefined) {
+            setAutoStartFocus(autoFocus);
+            localStorage.setItem("pomo_auto_focus", autoFocus.toString());
+        }
+        
+        // If timer is not running, update the current display
+        if (!isActive) {
+            setTimeLeft(focus * 60);
+        }
+    };
 
     // Listen to user's tasks
     useEffect(() => {
@@ -70,6 +157,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
     }, [currentUser]);
 
     const playSound = () => {
+        if (isMuted) return;
         try {
             const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
             audio.play().catch(e => console.log("Audio play deferred or blocked:", e));
@@ -167,11 +255,20 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                         newStreak = `${updatedStreakValue} Day${updatedStreakValue > 1 ? 's' : ''}`;
                     }
 
+                    const currentDailyMinutes = userData.dailyFocusMinutes || 0;
+                    const sessionMinutes = Math.ceil(initialTimeRef.current / 60); 
+                    const currentXP = userData.totalXP || 0;
+                    const currentDailyXP = userData.dailyXP || 0;
+                    const earnedXP = (sessionMinutes * 10) + 50; 
+
                     const updatedData = {
                         totalStudyTime: newTotal,
                         rank: newRank,
                         currentStreak: newStreak,
                         lastSessionDate: todayDate,
+                        dailyFocusMinutes: currentDailyMinutes + sessionMinutes,
+                        totalXP: currentXP + earnedXP,
+                        dailyXP: currentDailyXP + earnedXP,
                     };
 
                     await updateDoc(userRef, updatedData).catch(async () => {
@@ -191,7 +288,13 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
             // Important: We only show the transition choice if they DIDN'T just finish their main goal
             // If they did finish the goal, `showFeedback` handles the flow from there.
             if (!showFeedback) {
-                setShowTransitionFeedback(true);
+                if (autoStartBreaks) {
+                    setTimerMode("SHORT_BREAK");
+                    setIsActive(true);
+                    toast.info("Auto-starting short break... ☕");
+                } else {
+                    setShowTransitionFeedback(true);
+                }
             }
 
             if (Notification.permission === "granted") {
@@ -199,11 +302,18 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
             }
 
         } else {
-            toast.success("Break complete! Back to focus.");
             if (Notification.permission === "granted") {
                 new Notification("Study Pal Timer", { body: "Break complete! Time to focus." });
             }
-            setTimerMode("FOCUS");
+            
+            if (autoStartFocus) {
+                setTimerMode("FOCUS");
+                setIsActive(true);
+                toast.info("Auto-starting next focus session... 🚀");
+            } else {
+                toast.success("Break complete! Back to focus.");
+                setTimerMode("FOCUS");
+            }
         }
     };
 
@@ -231,18 +341,19 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
 
     const resetTimer = () => {
         setIsActive(false);
-        setTimeLeft(3);
+        setTimeLeft(focusLength * 60);
     };
 
     const setTimerMode = (newMode: TimerMode) => {
         setMode(newMode);
         setIsActive(false);
-        let time = 3;
+        
+        const time = newMode === "FOCUS" 
+            ? focusLength * 60 
+            : (newMode === "SHORT_BREAK" ? shortBreakLength * 60 : longBreakLength * 60);
+        
         setTimeLeft(time);
-
-        if (newMode === "FOCUS") initialTimeRef.current = 25 * 60;
-        else if (newMode === "SHORT_BREAK") initialTimeRef.current = 5 * 60;
-        else initialTimeRef.current = 15 * 60;
+        initialTimeRef.current = time;
     };
 
     const formatTime = (seconds: number) => {
@@ -267,6 +378,21 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         showTransitionFeedback,
         setShowTransitionFeedback,
         lastSessionTaskId,
+        focusLength,
+        shortBreakLength,
+        longBreakLength,
+        autoStartBreaks,
+        autoStartFocus,
+        updateTimerSettings,
+        
+        // System Configs
+        particleDensity,
+        adaptiveHUD,
+        glowIntensity,
+        isMuted,
+        notificationsEnabled,
+        dailyGoal,
+        updateSystemConfigs
     };
 
     return (

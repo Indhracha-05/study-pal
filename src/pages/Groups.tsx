@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Users, Plus, Trash2 } from "lucide-react"
+import { Users, Plus, Trash2, Share2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import {
     Dialog,
@@ -29,7 +29,14 @@ export default function Groups() {
     const [haltDialogOpen, setHaltDialogOpen] = useState(false)
     const { currentUser } = useAuth()
     const navigate = useNavigate()
-    const { isActive, toggleTimer } = useTimer()
+    const { toggleTimer } = useTimer()
+    const [inviteCode, setInviteCode] = useState("")
+
+    const GLOBAL_ROOMS = [
+        { id: "global-library", name: "The Great Library", desc: "For the most intense deep work sessions.", icon: "🏛️" },
+        { id: "global-sanctuary", name: "Silent Sanctuary", desc: "A peaceful sanctuary for light reading.", icon: "🧘" },
+        { id: "global-hall", name: "Scholar Hall", desc: "High-energy exam cramming for the elite.", icon: "🎓" }
+    ]
 
     // Listen to groups from Firestore
     useEffect(() => {
@@ -90,7 +97,7 @@ export default function Groups() {
     }
 
     const handleJoinGroup = async (groupId: string, groupName: string) => {
-        if (!currentUser) return
+        if (!currentUser || userGroups.includes(groupId)) return
         try {
             const groupRef = doc(db, "groups", groupId)
             const userRef = doc(db, "users", currentUser.uid)
@@ -112,6 +119,28 @@ export default function Groups() {
             toast.success(`Welcome to ${groupName}!`)
         } catch (err) {
             toast.error("Failed to join group")
+        }
+    }
+
+    const handleJoinWithCode = async () => {
+        if (!inviteCode.trim() || !currentUser) return
+        const code = inviteCode.trim()
+        
+        if (userGroups.includes(code)) {
+            toast.info("You're already in this circle!")
+            return
+        }
+
+        try {
+            const groupSnap = await getDoc(doc(db, "groups", code))
+            if (groupSnap.exists()) {
+                await handleJoinGroup(code, groupSnap.data().name)
+                setInviteCode("")
+            } else {
+                toast.error("Invalid Sanctuary Code")
+            }
+        } catch (err) {
+            toast.error("Failed to find room")
         }
     }
 
@@ -142,15 +171,10 @@ export default function Groups() {
         }
     }
 
-    const [pendingRoomId, setPendingRoomId] = useState<string | null>(null)
+    const [pendingRoomId] = useState<string | null>(null)
 
     const handleEnterRoom = (groupId: string) => {
-        if (isActive) {
-            setPendingRoomId(groupId)
-            setHaltDialogOpen(true)
-        } else {
-            navigate(`/dashboard/groups/${groupId}/room`)
-        }
+        navigate(`/dashboard/groups/${groupId}/room`)
     }
 
     const handleConfirmHalt = () => {
@@ -173,108 +197,153 @@ export default function Groups() {
 
     return (
         <>
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold tracking-tight">Study Groups</h1>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Create Group
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
-                            <DialogHeader>
-                                <DialogTitle>Create Study Group</DialogTitle>
-                                <DialogDescription>
-                                    Create a new group to study together with your friends.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="name">Group Name</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="e.g. Advanced Calculus"
-                                        value={newGroupName}
-                                        onChange={(e) => setNewGroupName(e.target.value)}
-                                    />
+            <div className="space-y-12">
+                <div className="flex items-center justify-between flex-wrap gap-6">
+                    <div>
+                        <h1 className="text-4xl font-black font-heading tracking-tight">The Hub</h1>
+                        <p className="text-muted-foreground mt-1 font-medium">Join a global hall or create a private sanctuary.</p>
+                    </div>
+                    <div className="flex gap-4 items-center flex-wrap">
+                        <div className="flex gap-2 p-1.5 bg-muted/30 border border-border rounded-2xl group focus-within:ring-2 ring-primary/20 transition-all min-w-[320px]">
+                            <Input 
+                                placeholder="Enter private code..." 
+                                className="border-none bg-transparent focus-visible:ring-0 flex-1 font-black tracking-widest text-[11px] px-4"
+                                value={inviteCode}
+                                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                            />
+                            <Button size="sm" className="rounded-xl font-black text-[10px] px-6" onClick={handleJoinWithCode}>JOIN</Button>
+                        </div>
+                        <Dialog open={open} onOpenChange={setOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="rounded-2xl glow-btn shadow-primary/20 font-black tracking-widest">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    CREATE ROOM
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Create Private Sanctuary</DialogTitle>
+                                    <DialogDescription>
+                                        Create a hidden group with a unique invite code for your squad.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="name">Group Name</Label>
+                                        <Input
+                                            id="name"
+                                            placeholder="e.g. Finals Survival"
+                                            value={newGroupName}
+                                            onChange={(e) => setNewGroupName(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                            <DialogFooter>
-                                <Button onClick={handleCreateGroup}>Create Group</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                                <DialogFooter>
+                                    <Button onClick={handleCreateGroup} className="w-full font-black">START SESSION</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </div>
 
-                {loading ? (
-                    <p className="text-muted-foreground">Loading groups from database...</p>
-                ) : groups.length === 0 ? (
-                    <p className="text-muted-foreground">No groups found. Be the first to create one!</p>
-                ) : (
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {groups.map((group) => {
-                            const isJoined = userGroups.includes(group.id)
-                            return (
-                                <Card key={group.id} className="glass-card border-none group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden">
-                                    <CardHeader className="relative pr-8 pb-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                                                <Users className="h-5 w-5" />
-                                            </div>
-                                            <CardTitle className="text-lg font-heading">{group.name}</CardTitle>
-                                        </div>
-                                        <CardDescription className="font-bold flex items-center gap-1 mt-1 text-[11px] uppercase tracking-widest text-muted-foreground/60">
-                                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1" />
-                                            {group.activeNow} Studying Now
-                                        </CardDescription>
-                                        
-                                        {group.createdBy === currentUser?.uid && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute top-4 right-4 h-8 w-8 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                                                onClick={() => handleDeleteGroup(group.id, group.name)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4 py-4 border-y border-white/5">
-                                            <div>
-                                                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/50">Members</p>
-                                                <p className="text-xl font-black font-mono">{group.members}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/50">Level</p>
-                                                <p className="text-xl font-black font-mono text-primary">LVL {Math.floor(group.members / 5) + 1}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            {isJoined ? (
-                                                <>
-                                                    <Button variant="outline" size="sm" className="flex-1 bg-primary/5 border-primary/10 hover:bg-primary/10 font-bold" onClick={() => handleEnterRoom(group.id)}>
-                                                        Enter Room
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleLeaveGroup(group.id, group.name)}>
-                                                        Leave
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <Button className="w-full font-bold glow-btn" onClick={() => handleJoinGroup(group.id, group.name)}>
-                                                    Join Group
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )
-                        })}
+                {/* Global Halls Section */}
+                <section>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 mb-6 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-primary/40 rounded-full" /> Global Halls (Always Open)
+                    </h2>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {GLOBAL_ROOMS.map(room => (
+                            <Card key={room.id} className="glass-card border-none bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group p-6 flex flex-col justify-between relative overflow-hidden" onClick={() => navigate(`/dashboard/groups/${room.id}/room`)}>
+                                <div className="relative z-10">
+                                    <div className="text-3xl mb-4 group-hover:scale-110 transition-transform origin-left">{room.icon}</div>
+                                    <h3 className="font-black font-heading text-xl leading-tight uppercase mb-1">{room.name}</h3>
+                                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest leading-relaxed mb-4">{room.desc}</p>
+                                </div>
+                                <Button variant="outline" size="sm" className="w-full bg-primary/5 border-primary/10 group-hover:bg-primary group-hover:text-white font-black text-[10px] tracking-widest transition-all relative z-10">
+                                    ENTER HALL
+                                </Button>
+                            </Card>
+                        ))}
                     </div>
-                )}
+                </section>
+
+                {/* Your Private Rooms Section */}
+                <section>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 mb-6 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-orange-400/40 rounded-full" /> Your Joined Circles
+                    </h2>
+                    {loading ? (
+                        <p className="text-muted-foreground">Syncing halls...</p>
+                    ) : userGroups.length === 0 ? (
+                        <Card className="glass-card border-dashed bg-transparent py-16 text-center border-white/5">
+                            <p className="text-sm text-muted-foreground italic mb-2 opacity-50">No private circles joined.</p>
+                            <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-30">Invite your peers to start a squad</p>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {groups
+                                .filter(g => userGroups.includes(g.id))
+                                .map((group) => {
+                                return (
+                                    <Card key={group.id} className="glass-card border-none group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden">
+                                        <CardHeader className="relative pr-8 pb-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-xl bg-orange-400/10 text-orange-400">
+                                                    <Users className="h-5 w-5" />
+                                                </div>
+                                                <CardTitle className="text-lg font-heading uppercase">{group.name}</CardTitle>
+                                            </div>
+                                            <CardDescription className="font-bold flex items-center gap-1 mt-1 text-[11px] uppercase tracking-widest text-green-600 dark:text-green-400">
+                                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1" />
+                                                LIVE IN ROOM
+                                            </CardDescription>
+                                            
+                                            {group.createdBy === currentUser?.uid && (
+                                                <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText(group.id);
+                                                            toast.success("Invite Code Copied! 🛰️");
+                                                        }}
+                                                        title="Copy Invite Code"
+                                                    >
+                                                        <Share2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteGroup(group.id, group.name);
+                                                        }}
+                                                        title="Delete Group"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </CardHeader>
+                                        <CardContent className="space-y-4 pt-4">
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="outline" size="sm" className="flex-1 bg-primary/5 border-primary/10 hover:bg-primary/10 font-black text-[10px] uppercase tracking-widest" onClick={() => handleEnterRoom(group.id)}>
+                                                    ENTER ROOM
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive font-black text-[10px] uppercase tracking-widest" onClick={() => handleLeaveGroup(group.id, group.name)}>
+                                                    LEAVE
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })}
+                        </div>
+                    )}
+                </section>
             </div>
 
             {/* Halt session confirmation dialog */}
