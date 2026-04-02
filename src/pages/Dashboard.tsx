@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Timer, Trophy, Flame, Plus, Trash2, CheckCircle2, Circle, Brain } from "lucide-react"
+import { Users, Timer, Trophy, Flame, Plus, Trash2, CheckCircle2, Circle } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, onSnapshot, collection, query, where, deleteDoc, updateDoc, setDoc } from "firebase/firestore"
 import { useAuth } from "@/contexts/AuthContext"
