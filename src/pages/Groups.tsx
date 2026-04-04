@@ -29,7 +29,8 @@ import {
     updateDoc, 
     arrayUnion, 
     arrayRemove, 
-    setDoc 
+    setDoc,
+    increment
 } from "firebase/firestore"
 import { useTimer } from "@/contexts/TimerContext"
 import { useAuth } from "@/contexts/AuthContext"
@@ -144,10 +145,9 @@ export default function Groups() {
             }, { merge: true })
 
             // Update group member count/list atomically
-            const currentGroup = groups.find(g => g.id === groupId)
             await updateDoc(groupRef, {
                 memberIds: arrayUnion(currentUser.uid),
-                members: (currentGroup?.memberIds?.length || 0) + 1
+                members: increment(1)
             })
 
             toast.success(`Linked to ${groupName} frequency. 🛰️`)
@@ -192,7 +192,8 @@ export default function Groups() {
 
             // Update group member metadata atomically
             await updateDoc(groupRef, {
-                memberIds: arrayRemove(currentUser.uid)
+                memberIds: arrayRemove(currentUser.uid),
+                members: increment(-1)
             })
 
             toast.success(`Frequency disconnected from ${groupName}.`)
@@ -240,7 +241,8 @@ export default function Groups() {
                                 placeholder="Enter private code..."
                                 className="border-none bg-transparent focus-visible:ring-0 flex-1 font-black tracking-widest text-[11px] px-4"
                                 value={inviteCode}
-                                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                                onChange={(e) => setInviteCode(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleJoinWithCode()}
                             />
                             <Button size="sm" className="rounded-xl font-black text-[10px] px-6" onClick={handleJoinWithCode}>JOIN</Button>
                         </div>
