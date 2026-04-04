@@ -130,7 +130,9 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         
         // If timer is not running, update the current display
         if (!isActive) {
-            setTimeLeft(focus * 60);
+            const time = mode === "FOCUS" ? focus * 60 : (mode === "SHORT_BREAK" ? short * 60 : long * 60);
+            setTimeLeft(time);
+            initialTimeRef.current = time;
         }
     };
 
@@ -341,7 +343,9 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
 
     const resetTimer = () => {
         setIsActive(false);
-        setTimeLeft(focusLength * 60);
+        const time = mode === "FOCUS" ? focusLength * 60 : (mode === "SHORT_BREAK" ? shortBreakLength * 60 : longBreakLength * 60);
+        setTimeLeft(time);
+        initialTimeRef.current = time;
     };
 
     const setTimerMode = (newMode: TimerMode) => {
