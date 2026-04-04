@@ -69,8 +69,8 @@ export default function Settings() {
         const short = Number(tempShort)
         const long = Number(tempLong)
 
-        if (isNaN(focus) || isNaN(short) || isNaN(long) || focus <= 0) {
-            toast.error("Telemetry error: Invalid numeric data detected.")
+        if (isNaN(focus) || isNaN(short) || isNaN(long) || focus <= 0 || short <= 0 || long <= 0) {
+            toast.error("Telemetry error: Intervals must be at least 1 minute.")
             return
         }
 
@@ -279,6 +279,7 @@ export default function Settings() {
                                             <span className="text-[10px] font-black text-muted-foreground/40">CUSTOM</span>
                                             <Input 
                                                 type="number" 
+                                                min="1"
                                                 className="w-20 h-10 bg-white dark:bg-black/60 border-slate-200 dark:border-white/10 text-center font-black text-sm focus:ring-indigo-500"
                                                 value={tempFocus}
                                                 onChange={(e) => setTempFocus(e.target.value)}
@@ -308,6 +309,7 @@ export default function Settings() {
                                             ))}
                                             <Input 
                                                 type="number" 
+                                                min="1"
                                                 className="w-16 h-10 bg-white dark:bg-black/40 border-slate-200 dark:border-white/5 font-black text-center text-xs ml-auto"
                                                 value={tempShort}
                                                 onChange={(e) => setTempShort(e.target.value)}
@@ -334,6 +336,7 @@ export default function Settings() {
                                             ))}
                                             <Input 
                                                 type="number" 
+                                                min="1"
                                                 className="w-16 h-10 bg-white dark:bg-black/40 border-slate-200 dark:border-white/5 font-black text-center text-xs ml-auto"
                                                 value={tempLong}
                                                 onChange={(e) => setTempLong(e.target.value)}
